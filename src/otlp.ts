@@ -44,7 +44,10 @@ interface ExportRequest {
 
 function value(v: AnyValue): string | number | boolean {
   if (v.stringValue !== undefined) return v.stringValue;
-  if (v.intValue !== undefined) return Number(v.intValue);
+  if (v.intValue !== undefined) {
+    const n = Number(v.intValue);
+    return Number.isSafeInteger(n) ? n : String(v.intValue);
+  }
   if (v.doubleValue !== undefined) return v.doubleValue;
   if (v.boolValue !== undefined) return v.boolValue;
   return '';
@@ -54,6 +57,14 @@ function attrs(kvs: KeyValue[] | undefined): Record<string, string | number | bo
   const out: Record<string, string | number | boolean> = {};
   for (const kv of kvs ?? []) out[kv.key] = value(kv.value);
   return out;
+}
+
+function nanos(v: string | number | undefined): bigint {
+  if (typeof v === 'number') return BigInt(Math.round(v));
+  if (typeof v === 'string' && /^\d+$/.test(v)) return BigInt(v);
+  if (typeof v === 'string' && v.trim() !== '' && Number.isFinite(Number(v)))
+    return BigInt(Math.round(Number(v)));
+  return 0n;
 }
 
 /** Parse one OTLP/JSON export request. */
@@ -68,8 +79,8 @@ export function parseExport(doc: ExportRequest): Span[] {
           spanId: s.spanId,
           parentSpanId: s.parentSpanId ?? '',
           name: s.name,
-          startNs: BigInt(s.startTimeUnixNano),
-          endNs: BigInt(s.endTimeUnixNano),
+          startNs: nanos(s.startTimeUnixNano),
+          endNs: nanos(s.endTimeUnixNano),
           attributes: attrs(s.attributes),
           service,
         });
@@ -79,21 +90,46 @@ export function parseExport(doc: ExportRequest): Span[] {
   return spans;
 }
 
+function isExport(doc: unknown): doc is ExportRequest {
+  return typeof doc === 'object' && doc !== null && Array.isArray((doc as ExportRequest).resourceSpans);
+}
+
 /**
  * Parse a trace file: a single OTLP/JSON document, or JSON Lines of them
- * (the collector's file exporter writes one export request per line).
+ * (the collector's file exporter writes one export request per line). A cut-off
+ * last line, common when the collector is still writing, is skipped with a warning.
  */
-export function parseTraceFile(text: string): Span[] {
+export function parseTraceFile(text: string, warn: (msg: string) => void = () => {}): Span[] {
   const trimmed = text.trim();
   if (!trimmed) return [];
+  let whole: unknown;
   try {
-    return parseExport(JSON.parse(trimmed) as ExportRequest);
+    whole = JSON.parse(trimmed);
   } catch {
-    return trimmed
-      .split('\n')
-      .filter((l) => l.trim())
-      .flatMap((l) => parseExport(JSON.parse(l) as ExportRequest));
+    whole = undefined;
   }
+  if (whole !== undefined) {
+    if (!isExport(whole)) throw new Error('not an OTLP/JSON trace export (no resourceSpans)');
+    return parseExport(whole);
+  }
+  const lines = trimmed.split('\n');
+  const spans: Span[] = [];
+  lines.forEach((line, i) => {
+    if (!line.trim()) return;
+    let doc: unknown;
+    try {
+      doc = JSON.parse(line);
+    } catch (e) {
+      if (i === lines.length - 1 && i > 0) {
+        warn(`skipped truncated last line ${i + 1}`);
+        return;
+      }
+      throw new Error(`line ${i + 1}: ${(e as Error).message}`, { cause: e });
+    }
+    if (!isExport(doc)) throw new Error(`line ${i + 1}: not an OTLP/JSON trace export (no resourceSpans)`);
+    spans.push(...parseExport(doc));
+  });
+  return spans;
 }
 
 /** The SQL text of a database span, if any (current and older semconv names). */

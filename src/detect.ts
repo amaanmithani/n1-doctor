@@ -18,8 +18,12 @@ export interface Occurrence {
 }
 
 export interface Finding {
-  /** Stable across runs: service + logical parent name + fingerprint. */
+  /** Identifies this finding within one report (derived from `keys`). */
   key: string;
+  /** One per statement, stable across runs: service + logical parent name + fingerprint.
+   * Baselines store these, so a loop body that issues a different mix of statements
+   * on different data still matches. */
+  keys: string[];
   service: string;
   parent: string;
   /** The first statement of the loop body. */
@@ -32,7 +36,8 @@ export interface Finding {
   occurrences: Occurrence[];
   maxCount: number;
   totalMs: number;
-  /** If each repeated batch had run as one query of the slowest member's cost. */
+  /** Wall time the repeated statements took (overlapping concurrent queries counted
+   * once) minus the slowest one: what one batched query of that cost would save. */
   estimatedSavedMs: number;
   examples: string[];
   suggestion: string;
@@ -67,7 +72,33 @@ function locationOf(chain: Span[]): string | null {
   return null;
 }
 
-const IGNORED = /^(begin|commit|rollback|savepoint|release savepoint|set |show |select \?$|deallocate)/;
+// Transaction control and connection chatter. `begin` only on its own: a PL/SQL
+// `begin proc(?); end;` block called in a loop is a real N+1.
+const IGNORED =
+  /^(?:(?:begin|start transaction)(?: transaction| work| isolation level [a-z ]+| read (?:only|write))*;?$|commit|rollback|savepoint|release savepoint|set |show |select \?;?$|deallocate|discard )/;
+
+export function keyOf(service: string, parent: string, fp: string): string {
+  return createHash('sha256').update(`${service}\0${parent}\0${fp}`).digest('hex').slice(0, 16);
+}
+
+/** Wall time covered by a set of intervals, in ms. */
+function wallMs(spans: Span[]): number {
+  const iv = spans
+    .map((s) => [s.startNs, s.endNs] as const)
+    .sort((a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0));
+  let total = 0n;
+  let curStart: bigint | null = null;
+  let curEnd = 0n;
+  for (const [s, e] of iv) {
+    if (curStart === null || s > curEnd) {
+      if (curStart !== null) total += curEnd - curStart;
+      curStart = s;
+      curEnd = e;
+    } else if (e > curEnd) curEnd = e;
+  }
+  if (curStart !== null) total += curEnd - curStart;
+  return Number(total) / 1e6;
+}
 
 function kindOf(fp: string): Kind {
   if (fp.startsWith('select') || fp.startsWith('with')) return 'select';
@@ -79,8 +110,10 @@ function kindOf(fp: string): Kind {
 
 /** Find N+1 patterns across all traces in `spans`. */
 export function detect(spans: Span[], opts: Options = DEFAULTS): Finding[] {
+  // The same span read twice (overlapping exports, a file passed twice) counts once.
   const byId = new Map<string, Span>();
   for (const s of spans) byId.set(`${s.traceId}/${s.spanId}`, s);
+  const unique = [...byId.values()];
 
   interface Group {
     trace: string;
@@ -90,7 +123,7 @@ export function detect(spans: Span[], opts: Options = DEFAULTS): Finding[] {
     chain: Span[];
   }
   const groups = new Map<string, Group>();
-  for (const s of spans) {
+  for (const s of unique) {
     const sql = statementOf(s);
     if (!sql) continue;
     const fp = fingerprint(sql);
@@ -133,17 +166,16 @@ export function detect(spans: Span[], opts: Options = DEFAULTS): Finding[] {
     const fps = body.map((g) => g.fp);
     const service = g0.stmts[0]?.service ?? 'unknown';
     const parent = g0.parent?.name ?? '(root)';
+    const keys = fps.map((fp) => keyOf(service, parent, fp));
     const key = createHash('sha256')
-      .update(`${service}\0${parent}\0${[...fps].sort().join('\0')}`)
+      .update([...keys].sort().join('\0'))
       .digest('hex')
       .slice(0, 16);
     let total = 0;
     let saved = 0;
     for (const g of body) {
-      const durations = g.stmts.map(durationMs);
-      const t = durations.reduce((a, b) => a + b, 0);
-      total += t;
-      saved += t - Math.max(...durations);
+      total += g.stmts.reduce((a, s) => a + durationMs(s), 0);
+      saved += Math.max(0, wallMs(g.stmts) - g.stmts.reduce((m, s) => Math.max(m, durationMs(s)), 0));
     }
     const chain = body.flatMap((g) => g.chain);
     const orm = ormOf(chain);
@@ -154,6 +186,7 @@ export function detect(spans: Span[], opts: Options = DEFAULTS): Finding[] {
       findings.get(key) ??
       ({
         key,
+        keys,
         service,
         parent,
         fingerprint: g0.fp,

@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-24T16:58:16.732Z",
+  "generatedAt": "2026-09-24T17:10:56.847Z",
   "env": {
     "node": "v25.9.0",
     "db": "PostgreSQL (local, same host)",
@@ -11,42 +11,72 @@
       "path": "/feed/n1",
       "n1": true,
       "note": "author per post (findUnique in a loop)",
-      "dbQueries": 21
+      "expect": {
+        "kind": "select",
+        "table": "\"user\""
+      },
+      "dbQueries": 21,
+      "resetBetweenRequests": false
     },
     {
       "method": "GET",
       "path": "/users/n1",
       "n1": true,
       "note": "post count per user",
-      "dbQueries": 13
+      "expect": {
+        "kind": "select",
+        "table": "\"post\""
+      },
+      "dbQueries": 13,
+      "resetBetweenRequests": false
     },
     {
       "method": "GET",
       "path": "/comments/n1",
       "n1": true,
       "note": "author per comment via Promise.all + findFirst (concurrent N+1)",
-      "dbQueries": 31
+      "expect": {
+        "kind": "select",
+        "table": "\"user\""
+      },
+      "dbQueries": 31,
+      "resetBetweenRequests": false
     },
     {
       "method": "POST",
       "path": "/audit/n1",
       "n1": true,
       "note": "insert per event",
-      "dbQueries": 10
+      "expect": {
+        "kind": "insert",
+        "table": "\"auditlog\""
+      },
+      "dbQueries": 10,
+      "resetBetweenRequests": false
     },
     {
       "method": "POST",
       "path": "/views/n1",
       "n1": true,
       "note": "update per post",
-      "dbQueries": 12
+      "expect": {
+        "kind": "update",
+        "table": "\"post\""
+      },
+      "dbQueries": 12,
+      "resetBetweenRequests": false
     },
     {
       "method": "POST",
       "path": "/tags/n1",
       "n1": true,
-      "note": "upsert per tag",
-      "dbQueries": 32
+      "note": "upsert per new tag",
+      "expect": {
+        "kind": "insert",
+        "table": "\"tag\""
+      },
+      "dbQueries": 32,
+      "resetBetweenRequests": true
     },
     {
       "method": "GET",
@@ -54,7 +84,8 @@
       "n1": false,
       "note": "include",
       "fixOf": "/feed/n1",
-      "dbQueries": 2
+      "dbQueries": 2,
+      "resetBetweenRequests": false
     },
     {
       "method": "GET",
@@ -62,7 +93,8 @@
       "n1": false,
       "note": "groupBy",
       "fixOf": "/users/n1",
-      "dbQueries": 2
+      "dbQueries": 2,
+      "resetBetweenRequests": false
     },
     {
       "method": "GET",
@@ -70,7 +102,8 @@
       "n1": false,
       "note": "DataLoader",
       "fixOf": "/comments/n1",
-      "dbQueries": 2
+      "dbQueries": 2,
+      "resetBetweenRequests": false
     },
     {
       "method": "POST",
@@ -78,7 +111,8 @@
       "n1": false,
       "note": "createMany",
       "fixOf": "/audit/n1",
-      "dbQueries": 1
+      "dbQueries": 1,
+      "resetBetweenRequests": false
     },
     {
       "method": "POST",
@@ -86,7 +120,8 @@
       "n1": false,
       "note": "updateMany",
       "fixOf": "/views/n1",
-      "dbQueries": 1
+      "dbQueries": 1,
+      "resetBetweenRequests": false
     },
     {
       "method": "POST",
@@ -94,49 +129,56 @@
       "n1": false,
       "note": "createMany skipDuplicates",
       "fixOf": "/tags/n1",
-      "dbQueries": 1
+      "dbQueries": 1,
+      "resetBetweenRequests": true
     },
     {
       "method": "GET",
       "path": "/dashboard",
       "n1": false,
       "note": "look-alike: 7 different queries",
-      "dbQueries": 7
+      "dbQueries": 7,
+      "resetBetweenRequests": false
     },
     {
       "method": "GET",
       "path": "/export",
       "n1": false,
       "note": "look-alike: keyset pagination, each page depends on the last",
-      "dbQueries": 8
+      "dbQueries": 8,
+      "resetBetweenRequests": false
     },
     {
       "method": "POST",
       "path": "/publish",
       "n1": false,
       "note": "look-alike: transaction of distinct statements",
-      "dbQueries": 6
+      "dbQueries": 6,
+      "resetBetweenRequests": false
     },
     {
       "method": "GET",
       "path": "/by-ids",
       "n1": false,
       "note": "look-alike: one IN query",
-      "dbQueries": 1
+      "dbQueries": 1,
+      "resetBetweenRequests": false
     },
     {
       "method": "GET",
       "path": "/comments/batched",
       "n1": false,
       "note": "look-alike: concurrent findUnique, which Prisma batches into one query",
-      "dbQueries": 2
+      "dbQueries": 2,
+      "resetBetweenRequests": false
     },
     {
       "method": "GET",
       "path": "/pinned",
       "n1": true,
       "note": "real N+1 of only 3 iterations: below the default threshold",
-      "dbQueries": 3
+      "dbQueries": 3,
+      "resetBetweenRequests": false
     }
   ],
   "main": {
@@ -152,162 +194,192 @@
         "path": "/feed/n1",
         "n1": true,
         "flagged": true,
-        "findings": 1
+        "caught": true,
+        "wrongFindings": 0
       },
       {
         "path": "/users/n1",
         "n1": true,
         "flagged": true,
-        "findings": 1
+        "caught": true,
+        "wrongFindings": 0
       },
       {
         "path": "/comments/n1",
         "n1": true,
         "flagged": true,
-        "findings": 1
+        "caught": true,
+        "wrongFindings": 0
       },
       {
         "path": "/audit/n1",
         "n1": true,
         "flagged": true,
-        "findings": 1
+        "caught": true,
+        "wrongFindings": 0
       },
       {
         "path": "/views/n1",
         "n1": true,
         "flagged": true,
-        "findings": 1
+        "caught": true,
+        "wrongFindings": 0
       },
       {
         "path": "/tags/n1",
         "n1": true,
         "flagged": true,
-        "findings": 1
+        "caught": true,
+        "wrongFindings": 0
       },
       {
         "path": "/feed/fixed",
         "n1": false,
         "flagged": false,
-        "findings": 0
+        "caught": false,
+        "wrongFindings": 0
       },
       {
         "path": "/users/fixed",
         "n1": false,
         "flagged": false,
-        "findings": 0
+        "caught": false,
+        "wrongFindings": 0
       },
       {
         "path": "/comments/fixed",
         "n1": false,
         "flagged": false,
-        "findings": 0
+        "caught": false,
+        "wrongFindings": 0
       },
       {
         "path": "/audit/fixed",
         "n1": false,
         "flagged": false,
-        "findings": 0
+        "caught": false,
+        "wrongFindings": 0
       },
       {
         "path": "/views/fixed",
         "n1": false,
         "flagged": false,
-        "findings": 0
+        "caught": false,
+        "wrongFindings": 0
       },
       {
         "path": "/tags/fixed",
         "n1": false,
         "flagged": false,
-        "findings": 0
+        "caught": false,
+        "wrongFindings": 0
       },
       {
         "path": "/dashboard",
         "n1": false,
         "flagged": false,
-        "findings": 0
+        "caught": false,
+        "wrongFindings": 0
       },
       {
         "path": "/export",
         "n1": false,
         "flagged": true,
-        "findings": 1
+        "caught": false,
+        "wrongFindings": 1
       },
       {
         "path": "/publish",
         "n1": false,
         "flagged": false,
-        "findings": 0
+        "caught": false,
+        "wrongFindings": 0
       },
       {
         "path": "/by-ids",
         "n1": false,
         "flagged": false,
-        "findings": 0
+        "caught": false,
+        "wrongFindings": 0
       },
       {
         "path": "/comments/batched",
         "n1": false,
         "flagged": false,
-        "findings": 0
+        "caught": false,
+        "wrongFindings": 0
       },
       {
         "path": "/pinned",
         "n1": true,
         "flagged": false,
-        "findings": 0
+        "caught": false,
+        "wrongFindings": 0
       }
     ],
     "findings": [
       {
-        "key": "7dba29334c4b2939",
-        "service": "blog-api",
-        "parent": "request handler - /comments/n1",
-        "fingerprint": "select \"public\".\"user\".\"id\", \"public\".\"user\".\"name\" from \"public\".\"user\" where \"public\".\"user\".\"id\" = ? limit ? offset ?",
-        "statements": [
-          "select \"public\".\"user\".\"id\", \"public\".\"user\".\"name\" from \"public\".\"user\" where \"public\".\"user\".\"id\" = ? limit ? offset ?"
+        "key": "6af4d224c7d0c2d8",
+        "keys": [
+          "ae0fd751ce22fc57",
+          "05e4e8eac482302a",
+          "9422944fa5b67518"
         ],
-        "kind": "select",
+        "service": "blog-api",
+        "parent": "request handler - /tags/n1",
+        "fingerprint": "select \"public\".\"tag\".\"id\" from \"public\".\"tag\" where (\"public\".\"tag\".\"name\" = ? and ? = ?) offset ?",
+        "statements": [
+          "select \"public\".\"tag\".\"id\" from \"public\".\"tag\" where (\"public\".\"tag\".\"name\" = ? and ? = ?) offset ?",
+          "insert into \"public\".\"tag\" (\"name\") values (?+) returning \"public\".\"tag\".\"id\"",
+          "select \"public\".\"tag\".\"id\", \"public\".\"tag\".\"name\" from \"public\".\"tag\" where \"public\".\"tag\".\"id\" = ? limit ? offset ?"
+        ],
+        "kind": "insert",
         "orm": "prisma",
-        "location": "demo/src/app.ts:47",
+        "location": "demo/src/app.ts:113",
         "occurrences": [
           {
-            "traceId": "4a3ec99c91a6c4148d9904ac3fbaf447",
-            "parentSpanId": "378b0189175b88fd",
-            "count": 30,
-            "totalMs": 139.32687899999996
+            "traceId": "260ad078032273a82efc3817d642f9f7",
+            "parentSpanId": "1b5a3034bcd13560",
+            "count": 8,
+            "totalMs": 61.911793
           }
         ],
-        "maxCount": 30,
-        "totalMs": 139.32687899999996,
-        "estimatedSavedMs": 133.98283699999996,
+        "maxCount": 8,
+        "totalMs": 61.911793,
+        "estimatedSavedMs": 36.792501,
         "examples": [
-          "SELECT \"public\".\"User\".\"id\", \"public\".\"User\".\"name\" FROM \"public\".\"User\" WHERE \"public\".\"User\".\"id\" = $1 LIMIT $2 OFFSET $3"
+          "SELECT \"public\".\"Tag\".\"id\" FROM \"public\".\"Tag\" WHERE (\"public\".\"Tag\".\"name\" = $1 AND 1=1) OFFSET $2",
+          "INSERT INTO \"public\".\"Tag\" (\"name\") VALUES ($1) RETURNING \"public\".\"Tag\".\"id\"",
+          "SELECT \"public\".\"Tag\".\"id\", \"public\".\"Tag\".\"name\" FROM \"public\".\"Tag\" WHERE \"public\".\"Tag\".\"id\" = $1 LIMIT $2 OFFSET $3"
         ],
-        "suggestion": "Load the related rows in one query: use `include`/`select` on the parent query, or collect the keys and call `findMany({ where: { id: { in: keys } } })` once, then join in memory.",
-        "route": "/comments/n1"
+        "suggestion": "Use `createMany({ data: rows })` instead of one `create` per row.",
+        "route": "/tags/n1"
       },
       {
-        "key": "bba03d651f673492",
+        "key": "7739f6e38a11323d",
+        "keys": [
+          "d570206c5d111cb6"
+        ],
         "service": "blog-api",
         "parent": "request handler - /views/n1",
-        "fingerprint": "update \"public\".\"post\" set \"views\" = (\"public\".\"post\".\"views\" + ?) where (\"public\".\"post\".\"id\" = ? and ?=?) returning \"public\".\"post\".\"id\", \"public\".\"post\".\"title\", \"public\".\"post\".\"authorid\", \"public\".\"post\".\"views\", \"public\".\"post\".\"createdat\"",
+        "fingerprint": "update \"public\".\"post\" set \"views\" = (\"public\".\"post\".\"views\" + ?) where (\"public\".\"post\".\"id\" = ? and ? = ?) returning \"public\".\"post\".\"id\", \"public\".\"post\".\"title\", \"public\".\"post\".\"authorid\", \"public\".\"post\".\"views\", \"public\".\"post\".\"createdat\"",
         "statements": [
-          "update \"public\".\"post\" set \"views\" = (\"public\".\"post\".\"views\" + ?) where (\"public\".\"post\".\"id\" = ? and ?=?) returning \"public\".\"post\".\"id\", \"public\".\"post\".\"title\", \"public\".\"post\".\"authorid\", \"public\".\"post\".\"views\", \"public\".\"post\".\"createdat\""
+          "update \"public\".\"post\" set \"views\" = (\"public\".\"post\".\"views\" + ?) where (\"public\".\"post\".\"id\" = ? and ? = ?) returning \"public\".\"post\".\"id\", \"public\".\"post\".\"title\", \"public\".\"post\".\"authorid\", \"public\".\"post\".\"views\", \"public\".\"post\".\"createdat\""
         ],
         "kind": "update",
         "orm": "prisma",
         "location": "demo/src/app.ts:100",
         "occurrences": [
           {
-            "traceId": "c0564aacb5d31d92a7fc3ba4afbcd97b",
-            "parentSpanId": "9a66ab2749000f4a",
+            "traceId": "2dadec905bbdd8a3358d8887c927674e",
+            "parentSpanId": "392ea615836a3ffd",
             "count": 12,
-            "totalMs": 16.742956999999997
+            "totalMs": 36.807251
           }
         ],
         "maxCount": 12,
-        "totalMs": 16.742956999999997,
-        "estimatedSavedMs": 10.788873999999996,
+        "totalMs": 36.807251,
+        "estimatedSavedMs": 30.288126,
         "examples": [
           "UPDATE \"public\".\"Post\" SET \"views\" = (\"public\".\"Post\".\"views\" + $1) WHERE (\"public\".\"Post\".\"id\" = $2 AND 1=1) RETURNING \"public\".\"Post\".\"id\", \"public\".\"Post\".\"title\", \"public\".\"Post\".\"authorId\", \"public\".\"Post\".\"views\", \"public\".\"Post\".\"createdAt\""
         ],
@@ -315,123 +387,10 @@
         "route": "/views/n1"
       },
       {
-        "key": "e99544895522ef57",
-        "service": "blog-api",
-        "parent": "request handler - /feed/n1",
-        "fingerprint": "select \"public\".\"user\".\"id\", \"public\".\"user\".\"name\" from \"public\".\"user\" where (\"public\".\"user\".\"id\" = ? and ?=?) limit ? offset ?",
-        "statements": [
-          "select \"public\".\"user\".\"id\", \"public\".\"user\".\"name\" from \"public\".\"user\" where (\"public\".\"user\".\"id\" = ? and ?=?) limit ? offset ?"
+        "key": "eafa4bbf6054a4e2",
+        "keys": [
+          "6f5ec83953d8b373"
         ],
-        "kind": "select",
-        "orm": "prisma",
-        "location": "demo/src/app.ts:15",
-        "occurrences": [
-          {
-            "traceId": "76aaa08e9e449312642a7b197f5d910a",
-            "parentSpanId": "8451efcfe033e2a7",
-            "count": 20,
-            "totalMs": 11.124166999999998
-          }
-        ],
-        "maxCount": 20,
-        "totalMs": 11.124166999999998,
-        "estimatedSavedMs": 9.914708999999998,
-        "examples": [
-          "SELECT \"public\".\"User\".\"id\", \"public\".\"User\".\"name\" FROM \"public\".\"User\" WHERE (\"public\".\"User\".\"id\" = $1 AND 1=1) LIMIT $2 OFFSET $3"
-        ],
-        "suggestion": "Load the related rows in one query: use `include`/`select` on the parent query, or collect the keys and call `findMany({ where: { id: { in: keys } } })` once, then join in memory.",
-        "route": "/feed/n1"
-      },
-      {
-        "key": "27eb7c80e18de013",
-        "service": "blog-api",
-        "parent": "request handler - /audit/n1",
-        "fingerprint": "insert into \"public\".\"auditlog\" (\"event\",\"refid\") values (?+) returning \"public\".\"auditlog\".\"id\", \"public\".\"auditlog\".\"event\", \"public\".\"auditlog\".\"refid\"",
-        "statements": [
-          "insert into \"public\".\"auditlog\" (\"event\",\"refid\") values (?+) returning \"public\".\"auditlog\".\"id\", \"public\".\"auditlog\".\"event\", \"public\".\"auditlog\".\"refid\""
-        ],
-        "kind": "insert",
-        "orm": "prisma",
-        "location": "demo/src/app.ts:86",
-        "occurrences": [
-          {
-            "traceId": "3eb592911b096fd18c861d520d092b35",
-            "parentSpanId": "04c2391668249b78",
-            "count": 10,
-            "totalMs": 21.197042
-          }
-        ],
-        "maxCount": 10,
-        "totalMs": 21.197042,
-        "estimatedSavedMs": 9.610834,
-        "examples": [
-          "INSERT INTO \"public\".\"AuditLog\" (\"event\",\"refId\") VALUES ($1,$2) RETURNING \"public\".\"AuditLog\".\"id\", \"public\".\"AuditLog\".\"event\", \"public\".\"AuditLog\".\"refId\""
-        ],
-        "suggestion": "Use `createMany({ data: rows })` instead of one `create` per row.",
-        "route": "/audit/n1"
-      },
-      {
-        "key": "2f71ab97349b4edf",
-        "service": "blog-api",
-        "parent": "request handler - /tags/n1",
-        "fingerprint": "select \"public\".\"tag\".\"id\" from \"public\".\"tag\" where (\"public\".\"tag\".\"name\" = ? and ?=?) offset ?",
-        "statements": [
-          "select \"public\".\"tag\".\"id\" from \"public\".\"tag\" where (\"public\".\"tag\".\"name\" = ? and ?=?) offset ?",
-          "select \"public\".\"tag\".\"id\", \"public\".\"tag\".\"name\" from \"public\".\"tag\" where ((\"public\".\"tag\".\"name\" = ? and ?=?) and \"public\".\"tag\".\"id\" in (?+)) limit ? offset ?",
-          "select \"public\".\"tag\".\"id\", \"public\".\"tag\".\"name\" from \"public\".\"tag\" where \"public\".\"tag\".\"id\" = ? limit ? offset ?"
-        ],
-        "kind": "select",
-        "orm": "prisma",
-        "location": "demo/src/app.ts:113",
-        "occurrences": [
-          {
-            "traceId": "fd9c0ec7ebd1f1635f6dee9298b16a58",
-            "parentSpanId": "a924d351c138245e",
-            "count": 8,
-            "totalMs": 15.914124999999999
-          }
-        ],
-        "maxCount": 8,
-        "totalMs": 15.914124999999999,
-        "estimatedSavedMs": 9.360832999999998,
-        "examples": [
-          "SELECT \"public\".\"Tag\".\"id\" FROM \"public\".\"Tag\" WHERE (\"public\".\"Tag\".\"name\" = $1 AND 1=1) OFFSET $2",
-          "SELECT \"public\".\"Tag\".\"id\", \"public\".\"Tag\".\"name\" FROM \"public\".\"Tag\" WHERE ((\"public\".\"Tag\".\"name\" = $1 AND 1=1) AND \"public\".\"Tag\".\"id\" IN ($2)) LIMIT $3 OFFSET $4",
-          "SELECT \"public\".\"Tag\".\"id\", \"public\".\"Tag\".\"name\" FROM \"public\".\"Tag\" WHERE \"public\".\"Tag\".\"id\" = $1 LIMIT $2 OFFSET $3"
-        ],
-        "suggestion": "Load the related rows in one query: use `include`/`select` on the parent query, or collect the keys and call `findMany({ where: { id: { in: keys } } })` once, then join in memory.",
-        "route": "/tags/n1"
-      },
-      {
-        "key": "07caef666efa6678",
-        "service": "blog-api",
-        "parent": "request handler - /users/n1",
-        "fingerprint": "select count(*) as \"_count$_all\" from (select \"public\".\"post\".\"id\" from \"public\".\"post\" where \"public\".\"post\".\"authorid\" = ? offset ?) as \"sub\"",
-        "statements": [
-          "select count(*) as \"_count$_all\" from (select \"public\".\"post\".\"id\" from \"public\".\"post\" where \"public\".\"post\".\"authorid\" = ? offset ?) as \"sub\""
-        ],
-        "kind": "select",
-        "orm": "prisma",
-        "location": "demo/src/app.ts:29",
-        "occurrences": [
-          {
-            "traceId": "675979307361ff1535429442091d989e",
-            "parentSpanId": "587f98d075a1ffe0",
-            "count": 12,
-            "totalMs": 12.808084000000001
-          }
-        ],
-        "maxCount": 12,
-        "totalMs": 12.808084000000001,
-        "estimatedSavedMs": 9.075084,
-        "examples": [
-          "SELECT COUNT(*) AS \"_count$_all\" FROM (SELECT \"public\".\"Post\".\"id\" FROM \"public\".\"Post\" WHERE \"public\".\"Post\".\"authorId\" = $1 OFFSET $2) AS \"sub\""
-        ],
-        "suggestion": "Load the related rows in one query: use `include`/`select` on the parent query, or collect the keys and call `findMany({ where: { id: { in: keys } } })` once, then join in memory.",
-        "route": "/users/n1"
-      },
-      {
-        "key": "6f5ec83953d8b373",
         "service": "blog-api",
         "parent": "request handler - /export",
         "fingerprint": "select \"public\".\"post\".\"id\", \"public\".\"post\".\"title\", \"public\".\"post\".\"authorid\", \"public\".\"post\".\"views\", \"public\".\"post\".\"createdat\" from \"public\".\"post\" where \"public\".\"post\".\"id\" > ? order by \"public\".\"post\".\"id\" asc limit ? offset ?",
@@ -443,39 +402,163 @@
         "location": "demo/src/app.ts:148",
         "occurrences": [
           {
-            "traceId": "d06919054c8c146a42a541bc7637b4f0",
-            "parentSpanId": "9ccb422cc416d8ca",
+            "traceId": "2adef8cb92fbf5e4a6742c3c9a8faf5c",
+            "parentSpanId": "fad3514c8fc7adc6",
             "count": 8,
-            "totalMs": 12.172915999999999
+            "totalMs": 19.757293999999998
           }
         ],
         "maxCount": 8,
-        "totalMs": 12.172915999999999,
-        "estimatedSavedMs": 5.808624999999999,
+        "totalMs": 19.757293999999998,
+        "estimatedSavedMs": 15.722460000000002,
         "examples": [
           "SELECT \"public\".\"Post\".\"id\", \"public\".\"Post\".\"title\", \"public\".\"Post\".\"authorId\", \"public\".\"Post\".\"views\", \"public\".\"Post\".\"createdAt\" FROM \"public\".\"Post\" WHERE \"public\".\"Post\".\"id\" > $1 ORDER BY \"public\".\"Post\".\"id\" ASC LIMIT $2 OFFSET $3"
         ],
         "suggestion": "Load the related rows in one query: use `include`/`select` on the parent query, or collect the keys and call `findMany({ where: { id: { in: keys } } })` once, then join in memory.",
         "route": "/export"
+      },
+      {
+        "key": "7f4b6f99b7ff3455",
+        "keys": [
+          "44db7955d099744a"
+        ],
+        "service": "blog-api",
+        "parent": "request handler - /audit/n1",
+        "fingerprint": "insert into \"public\".\"auditlog\" (\"event\", \"refid\") values (?+) returning \"public\".\"auditlog\".\"id\", \"public\".\"auditlog\".\"event\", \"public\".\"auditlog\".\"refid\"",
+        "statements": [
+          "insert into \"public\".\"auditlog\" (\"event\", \"refid\") values (?+) returning \"public\".\"auditlog\".\"id\", \"public\".\"auditlog\".\"event\", \"public\".\"auditlog\".\"refid\""
+        ],
+        "kind": "insert",
+        "orm": "prisma",
+        "location": "demo/src/app.ts:86",
+        "occurrences": [
+          {
+            "traceId": "316b5ddfee1d9e00a3e03cf97d356261",
+            "parentSpanId": "3680173d4100b611",
+            "count": 10,
+            "totalMs": 15.172792999999999
+          }
+        ],
+        "maxCount": 10,
+        "totalMs": 15.172792999999999,
+        "estimatedSavedMs": 10.330835,
+        "examples": [
+          "INSERT INTO \"public\".\"AuditLog\" (\"event\",\"refId\") VALUES ($1,$2) RETURNING \"public\".\"AuditLog\".\"id\", \"public\".\"AuditLog\".\"event\", \"public\".\"AuditLog\".\"refId\""
+        ],
+        "suggestion": "Use `createMany({ data: rows })` instead of one `create` per row.",
+        "route": "/audit/n1"
+      },
+      {
+        "key": "75e7f673e2444973",
+        "keys": [
+          "b06c84570bf3a633"
+        ],
+        "service": "blog-api",
+        "parent": "request handler - /users/n1",
+        "fingerprint": "select count (*) as \"_count$_all\" from (select \"public\".\"post\".\"id\" from \"public\".\"post\" where \"public\".\"post\".\"authorid\" = ? offset ?) as \"sub\"",
+        "statements": [
+          "select count (*) as \"_count$_all\" from (select \"public\".\"post\".\"id\" from \"public\".\"post\" where \"public\".\"post\".\"authorid\" = ? offset ?) as \"sub\""
+        ],
+        "kind": "select",
+        "orm": "prisma",
+        "location": "demo/src/app.ts:29",
+        "occurrences": [
+          {
+            "traceId": "67e57f1ef06756f83b935358c5d6981c",
+            "parentSpanId": "64149d4ddfff56a3",
+            "count": 12,
+            "totalMs": 12.724877000000001
+          }
+        ],
+        "maxCount": 12,
+        "totalMs": 12.724877000000001,
+        "estimatedSavedMs": 8.068335000000001,
+        "examples": [
+          "SELECT COUNT(*) AS \"_count$_all\" FROM (SELECT \"public\".\"Post\".\"id\" FROM \"public\".\"Post\" WHERE \"public\".\"Post\".\"authorId\" = $1 OFFSET $2) AS \"sub\""
+        ],
+        "suggestion": "Load the related rows in one query: use `include`/`select` on the parent query, or collect the keys and call `findMany({ where: { id: { in: keys } } })` once, then join in memory.",
+        "route": "/users/n1"
+      },
+      {
+        "key": "ac1dec620a0fa433",
+        "keys": [
+          "8b8f461878339946"
+        ],
+        "service": "blog-api",
+        "parent": "request handler - /feed/n1",
+        "fingerprint": "select \"public\".\"user\".\"id\", \"public\".\"user\".\"name\" from \"public\".\"user\" where (\"public\".\"user\".\"id\" = ? and ? = ?) limit ? offset ?",
+        "statements": [
+          "select \"public\".\"user\".\"id\", \"public\".\"user\".\"name\" from \"public\".\"user\" where (\"public\".\"user\".\"id\" = ? and ? = ?) limit ? offset ?"
+        ],
+        "kind": "select",
+        "orm": "prisma",
+        "location": "demo/src/app.ts:15",
+        "occurrences": [
+          {
+            "traceId": "6e96beed2d2c050d14992eaee3093bb5",
+            "parentSpanId": "19245332be9b969e",
+            "count": 20,
+            "totalMs": 10.858749999999999
+          }
+        ],
+        "maxCount": 20,
+        "totalMs": 10.858749999999999,
+        "estimatedSavedMs": 7.504125,
+        "examples": [
+          "SELECT \"public\".\"User\".\"id\", \"public\".\"User\".\"name\" FROM \"public\".\"User\" WHERE (\"public\".\"User\".\"id\" = $1 AND 1=1) LIMIT $2 OFFSET $3"
+        ],
+        "suggestion": "Load the related rows in one query: use `include`/`select` on the parent query, or collect the keys and call `findMany({ where: { id: { in: keys } } })` once, then join in memory.",
+        "route": "/feed/n1"
+      },
+      {
+        "key": "61cdf35aaf49a86d",
+        "keys": [
+          "7dba29334c4b2939"
+        ],
+        "service": "blog-api",
+        "parent": "request handler - /comments/n1",
+        "fingerprint": "select \"public\".\"user\".\"id\", \"public\".\"user\".\"name\" from \"public\".\"user\" where \"public\".\"user\".\"id\" = ? limit ? offset ?",
+        "statements": [
+          "select \"public\".\"user\".\"id\", \"public\".\"user\".\"name\" from \"public\".\"user\" where \"public\".\"user\".\"id\" = ? limit ? offset ?"
+        ],
+        "kind": "select",
+        "orm": "prisma",
+        "location": "demo/src/app.ts:47",
+        "occurrences": [
+          {
+            "traceId": "8ba0adea531cfe29067c7bbdfb7a3b5c",
+            "parentSpanId": "b3eb48fdf626d88c",
+            "count": 30,
+            "totalMs": 98.29204199999998
+          }
+        ],
+        "maxCount": 30,
+        "totalMs": 98.29204199999998,
+        "estimatedSavedMs": 0.6760409999999997,
+        "examples": [
+          "SELECT \"public\".\"User\".\"id\", \"public\".\"User\".\"name\" FROM \"public\".\"User\" WHERE \"public\".\"User\".\"id\" = $1 LIMIT $2 OFFSET $3"
+        ],
+        "suggestion": "Load the related rows in one query: use `include`/`select` on the parent query, or collect the keys and call `findMany({ where: { id: { in: keys } } })` once, then join in memory.",
+        "route": "/comments/n1"
       }
     ]
   },
   "sweep": [
     {
       "threshold": 2,
-      "tp": 7,
-      "fp": 1,
-      "fn": 0,
-      "precision": 0.875,
-      "recall": 1
+      "tp": 6,
+      "fp": 2,
+      "fn": 1,
+      "precision": 0.75,
+      "recall": 0.8571428571428571
     },
     {
       "threshold": 3,
-      "tp": 7,
-      "fp": 1,
-      "fn": 0,
-      "precision": 0.875,
-      "recall": 1
+      "tp": 6,
+      "fp": 2,
+      "fn": 1,
+      "precision": 0.75,
+      "recall": 0.8571428571428571
     },
     {
       "threshold": 4,
@@ -543,12 +626,12 @@
         "fixed": 2
       },
       "p50Ms": {
-        "n1": 18.00250000000051,
-        "fixed": 3.9263750000000073
+        "n1": 11.382250000000568,
+        "fixed": 2.494416000000456
       },
       "p95Ms": {
-        "n1": 26.231041000000005,
-        "fixed": 9.050041999999848
+        "n1": 20.803125000000364,
+        "fixed": 5.344084000000294
       }
     },
     {
@@ -559,12 +642,12 @@
         "fixed": 2
       },
       "p50Ms": {
-        "n1": 8.989832999999635,
-        "fixed": 2.2551669999993464
+        "n1": 7.588166999999885,
+        "fixed": 2.414875000000393
       },
       "p95Ms": {
-        "n1": 21.23029200000019,
-        "fixed": 8.470916000000216
+        "n1": 12.66662499999984,
+        "fixed": 4.797500000000582
       }
     },
     {
@@ -575,12 +658,12 @@
         "fixed": 2
       },
       "p50Ms": {
-        "n1": 11.40441699999974,
-        "fixed": 3.6704579999995985
+        "n1": 8.207666999999674,
+        "fixed": 2.5600000000004
       },
       "p95Ms": {
-        "n1": 23.84599999999955,
-        "fixed": 8.26495900000009
+        "n1": 11.34124999999949,
+        "fixed": 4.25537500000064
       }
     },
     {
@@ -591,12 +674,12 @@
         "fixed": 1
       },
       "p50Ms": {
-        "n1": 11.453499999999622,
-        "fixed": 5.4864159999997355
+        "n1": 6.673082999999679,
+        "fixed": 2.6746249999996508
       },
       "p95Ms": {
-        "n1": 19.68958300000122,
-        "fixed": 11.988375000000815
+        "n1": 12.57641699999931,
+        "fixed": 4.406708999999864
       }
     },
     {
@@ -607,12 +690,12 @@
         "fixed": 1
       },
       "p50Ms": {
-        "n1": 18.04554199999984,
-        "fixed": 2.75091699999939
+        "n1": 11.187832999999955,
+        "fixed": 2.099917000001369
       },
       "p95Ms": {
-        "n1": 34.9653330000001,
-        "fixed": 9.529041999998299
+        "n1": 22.041000000001077,
+        "fixed": 5.068375000000742
       }
     },
     {
@@ -623,12 +706,12 @@
         "fixed": 1
       },
       "p50Ms": {
-        "n1": 25.19158299999981,
-        "fixed": 3.428874999999607
+        "n1": 11.52416600000106,
+        "fixed": 1.8797089999989112
       },
       "p95Ms": {
-        "n1": 38.08166700000038,
-        "fixed": 6.412624999999025
+        "n1": 18.105749999998807,
+        "fixed": 2.5137919999997393
       }
     }
   ]

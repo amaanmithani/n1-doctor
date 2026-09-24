@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 // n1doctor check <traces...> [--threshold N] [--baseline file] [--format text|json|github]
 // n1doctor baseline <traces...> --out n1-baseline.json
-import { readFileSync, writeFileSync, existsSync } from 'node:fs';
+import { readFileSync, realpathSync, writeFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { DEFAULTS, detect } from './detect.js';
 import { parseTraceFile } from './otlp.js';
 import { newFindings, renderGitHub, renderText, toBaseline, type Baseline } from './report.js';
@@ -49,16 +50,25 @@ export function parseArgs(argv: string[]): Args {
 }
 
 /** Runs the command; returns the exit code (1 = new N+1s found). */
-export function run(a: Args, out: (s: string) => void): number {
-  const spans = a.files.flatMap((f) => parseTraceFile(readFileSync(f, 'utf8')));
+export function run(a: Args, out: (s: string) => void, warn: (s: string) => void = () => {}): number {
+  const spans = a.files.flatMap((f) => {
+    try {
+      return parseTraceFile(readFileSync(f, 'utf8'), (m) => warn(`${f}: ${m}\n`));
+    } catch (e) {
+      throw new Error(`${f}: ${(e as Error).message}`, { cause: e });
+    }
+  });
+  if (!spans.length) throw new Error(`no spans in ${a.files.join(', ')}`);
   const findings = detect(spans, { threshold: a.threshold });
   if (a.cmd === 'baseline') {
-    writeFileSync(a.out, JSON.stringify(toBaseline(findings), null, 2) + '\n');
-    out(`wrote ${a.out} with ${findings.length} known N+1 pattern(s)\n`);
+    const b = toBaseline(findings);
+    writeFileSync(a.out, JSON.stringify(b, null, 2) + '\n');
+    out(`wrote ${a.out}: ${findings.length} finding(s), ${b.keys.length} statement key(s)\n`);
     return 0;
   }
-  const base: Baseline | null =
-    a.baseline && existsSync(a.baseline) ? JSON.parse(readFileSync(a.baseline, 'utf8')) : null;
+  const base: Baseline | null = a.baseline
+    ? (JSON.parse(readFileSync(a.baseline, 'utf8')) as Baseline)
+    : null;
   const fresh = new Set(newFindings(findings, base).map((f) => f.key));
   if (a.format === 'json')
     out(JSON.stringify({ spans: spans.length, findings, new: [...fresh] }, null, 2) + '\n');
@@ -67,9 +77,24 @@ export function run(a: Args, out: (s: string) => void): number {
   return fresh.size > 0 ? 1 : 0;
 }
 
-if (process.argv[1] && import.meta.url.endsWith(process.argv[1].split('/').pop()!)) {
+function isMain(): boolean {
+  // Resolve symlinks: npm installs the bin as a link to dist/cli.js.
   try {
-    process.exitCode = run(parseArgs(process.argv.slice(2)), (s) => process.stdout.write(s));
+    return (
+      !!process.argv[1] && realpathSync(process.argv[1]) === realpathSync(fileURLToPath(import.meta.url))
+    );
+  } catch {
+    return false;
+  }
+}
+
+if (isMain()) {
+  try {
+    process.exitCode = run(
+      parseArgs(process.argv.slice(2)),
+      (s) => process.stdout.write(s),
+      (s) => process.stderr.write(`n1doctor: warning: ${s}`),
+    );
   } catch (e) {
     process.stderr.write(`n1doctor: ${(e as Error).message}\n`);
     process.exitCode = 2;

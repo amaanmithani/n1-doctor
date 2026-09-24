@@ -1,5 +1,6 @@
 // Builds OTLP/JSON export requests for tests.
 let n = 0;
+
 const id = () => (++n).toString(16).padStart(16, '0');
 
 export interface SpanSpec {

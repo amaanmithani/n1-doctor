@@ -7,11 +7,11 @@ export interface Baseline {
 
 export function newFindings(findings: Finding[], baseline: Baseline | null): Finding[] {
   const known = new Set(baseline?.keys ?? []);
-  return findings.filter((f) => !known.has(f.key));
+  return findings.filter((f) => f.keys.some((k) => !known.has(k)));
 }
 
 export function toBaseline(findings: Finding[]): Baseline {
-  return { version: 1, keys: [...new Set(findings.map((f) => f.key))].sort() };
+  return { version: 1, keys: [...new Set(findings.flatMap((f) => f.keys))].sort() };
 }
 
 const ms = (n: number) => `${n.toFixed(1)} ms`;
@@ -28,7 +28,7 @@ export function renderText(findings: Finding[], fresh: Set<string>): string {
       ...(f.location ? [`  where:    ${f.location}`] : []),
       ...(f.orm ? [`  via:      ${f.orm}`] : []),
       `  fix:      ${f.suggestion}`,
-      `  key:      ${f.key}`,
+      `  key:      ${f.keys.join(' ')}`,
       '',
     );
   }
@@ -42,11 +42,18 @@ export function renderGitHub(findings: Finding[], fresh: Set<string>): string {
     .map((f) => {
       const level = fresh.has(f.key) ? 'error' : 'warning';
       const loc = f.location?.match(/^(.+?):(\d+)/);
-      const props = [...(loc ? [`file=${loc[1]}`, `line=${loc[2]}`] : []), 'title=N+1 query'].join(',');
+      const props = [...(loc ? [`file=${prop(loc[1]!)}`, `line=${loc[2]}`] : []), 'title=N+1 query'].join(
+        ',',
+      );
       const msg = `${f.kind} repeated up to ${f.maxCount}x in ${f.parent}: ${f.fingerprint}. Fix: ${f.suggestion}`;
       return `::${level} ${props}::${esc(msg)}`;
     })
     .join('\n');
+}
+
+// Workflow-command escaping: data needs %, CR, LF; property values also : and ,.
+function prop(s: string): string {
+  return esc(s).replace(/:/g, '%3A').replace(/,/g, '%2C');
 }
 
 function esc(s: string): string {

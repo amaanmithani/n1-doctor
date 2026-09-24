@@ -51,6 +51,11 @@ jobs:
         uses: ./
         with: { traces: examples/demo-trace.json }
       - run: test "${{ steps.fresh.outcome }}" = failure
+      - name: Installed bin (a symlink) still runs and fails on new findings
+        run: |
+          ln -s "$PWD/dist/cli.js" "$RUNNER_TEMP/n1doctor"
+          set +e; node "$RUNNER_TEMP/n1doctor" check examples/demo-trace.json > /dev/null; code=$?; set -e
+          test "$code" = 1
 
   demo-eval:
     needs: build
@@ -67,13 +72,16 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with: { node-version: '22', cache: 'npm', cache-dependency-path: '**/package-lock.json' }
+      - run: cp results/eval.json "$RUNNER_TEMP/committed.json"
       - run: npm ci
       - working-directory: demo
         run: npm ci && npx prisma generate && npx tsc -p . && npx prisma db push && npx tsx src/eval.ts
-      - name: Detection results match the committed ones
+      - name: Every route's verdict matches the committed results
         run: |
           node -e '
-            const r = require("./results/eval.json").main;
-            const s = `${r.tp}/${r.fp}/${r.fn}`;
-            console.log("tp/fp/fn", s);
-            if (s !== "6/1/1") process.exit(1);'
+            const pick = (r) => JSON.stringify({ tp: r.main.tp, fp: r.main.fp, fn: r.main.fn,
+              rows: r.main.rows.map(({ path, flagged, caught, wrongFindings }) => ({ path, flagged, caught, wrongFindings })) });
+            const now = pick(require("./results/eval.json"));
+            const was = pick(require(process.env.RUNNER_TEMP + "/committed.json"));
+            if (now !== was) { console.error("eval changed\n" + was + "\n" + now); process.exit(1); }
+            console.log("eval matches committed results");'
