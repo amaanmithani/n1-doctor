@@ -36,3 +36,44 @@ jobs:
         with: { node-version: '22', cache: 'npm' }
       - run: npm ci
       - run: npm run build
+
+  action:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Accepted findings pass
+        uses: ./
+        with: { traces: examples/demo-trace.json, baseline: examples/baseline.json }
+      - name: New findings fail
+        id: fresh
+        continue-on-error: true
+        uses: ./
+        with: { traces: examples/demo-trace.json }
+      - run: test "${{ steps.fresh.outcome }}" = failure
+
+  demo-eval:
+    needs: build
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env: { POSTGRES_PASSWORD: postgres, POSTGRES_DB: n1doctor_demo }
+        ports: ['5432:5432']
+        options: --health-cmd pg_isready --health-interval 5s --health-retries 10
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/n1doctor_demo
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '22', cache: 'npm', cache-dependency-path: '**/package-lock.json' }
+      - run: npm ci
+      - working-directory: demo
+        run: npm ci && npx prisma generate && npx tsc -p . && npx prisma db push && npx tsx src/eval.ts
+      - name: Detection results match the committed ones
+        run: |
+          node -e '
+            const r = require("./results/eval.json").main;
+            const s = `${r.tp}/${r.fp}/${r.fn}`;
+            console.log("tp/fp/fn", s);
+            if (s !== "6/1/1") process.exit(1);'

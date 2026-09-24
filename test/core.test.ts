@@ -168,3 +168,28 @@ describe('report', () => {
     expect(renderGitHub(findings, new Set())).toMatch(/^::warning /);
   });
 });
+
+describe('loop bodies', () => {
+  it('reports statements repeated together as one finding', () => {
+    const upserts = Array.from({ length: 6 }, (_, i) => [
+      q(`SELECT id FROM tag WHERE name = 't${i}'`),
+      q(`INSERT INTO tag (name) VALUES ('t${i}')`),
+    ]).flat();
+    const [f, ...rest] = detect(parseExport(trace({ name: 'POST /tags', children: upserts })));
+    expect(rest).toEqual([]);
+    expect(f!.statements).toEqual([
+      'select id from tag where name = ?',
+      'insert into tag (name) values (?+)',
+    ]);
+    expect(f!.kind).toBe('insert');
+    expect(f!.suggestion).toContain('multi-row');
+    expect(renderText([f!], new Set())).toContain('insert into tag');
+  });
+  it('keeps loops with different counts apart', () => {
+    const kids = [
+      ...Array.from({ length: 6 }, (_, i) => q(`SELECT * FROM a WHERE id = ${i}`)),
+      ...Array.from({ length: 9 }, (_, i) => q(`SELECT * FROM b WHERE id = ${i}`)),
+    ];
+    expect(detect(parseExport(trace({ name: 'GET /x', children: kids })))).toHaveLength(2);
+  });
+});

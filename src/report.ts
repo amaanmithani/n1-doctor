@@ -24,7 +24,7 @@ export function renderText(findings: Finding[], fresh: Set<string>): string {
       `${fresh.has(f.key) ? 'NEW ' : ''}N+1 in ${f.service} › ${f.parent}: ${f.kind} repeated up to ${f.maxCount}× ` +
         `(${f.occurrences.length} trace${f.occurrences.length === 1 ? '' : 's'}, ${ms(f.totalMs)} total, ` +
         `~${ms(f.estimatedSavedMs)} avoidable)`,
-      `  query:    ${f.fingerprint}`,
+      ...f.statements.map((fp, i) => `  ${i ? '          ' : 'query:    '}${fp}`),
       ...(f.location ? [`  where:    ${f.location}`] : []),
       ...(f.orm ? [`  via:      ${f.orm}`] : []),
       `  fix:      ${f.suggestion}`,

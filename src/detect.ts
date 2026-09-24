@@ -22,7 +22,10 @@ export interface Finding {
   key: string;
   service: string;
   parent: string;
+  /** The first statement of the loop body. */
   fingerprint: string;
+  /** Every statement the loop body repeats, in order (upsert = select + insert, ...). */
+  statements: string[];
   kind: Kind;
   orm: string | null;
   location: string | null;
@@ -112,47 +115,68 @@ export function detect(spans: Span[], opts: Options = DEFAULTS): Finding[] {
     groups.set(key, g);
   }
 
-  const findings = new Map<string, Finding>();
+  // Statements that repeat the same number of times under the same parent are
+  // one loop body (an upsert is a select plus an insert): report them together.
+  const bodies = new Map<string, Group[]>();
   for (const g of groups.values()) {
     if (g.stmts.length < opts.threshold) continue;
-    const service = g.stmts[0]?.service ?? 'unknown';
-    const parent = g.parent?.name ?? '(root)';
-    const key = createHash('sha256').update(`${service}\0${parent}\0${g.fp}`).digest('hex').slice(0, 16);
-    const durations = g.stmts.map(durationMs);
-    const total = durations.reduce((a, b) => a + b, 0);
-    const saved = total - Math.max(...durations);
-    const orm = ormOf(g.chain);
-    const kind = kindOf(g.fp);
+    const k = `${g.trace}|${g.parent?.spanId ?? 'root'}|${g.stmts.length}`;
+    bodies.set(k, [...(bodies.get(k) ?? []), g]);
+  }
+
+  const findings = new Map<string, Finding>();
+  for (const body of bodies.values()) {
+    const first = (g: Group) =>
+      g.stmts.reduce((m, s) => (s.startNs < m ? s.startNs : m), g.stmts[0]!.startNs);
+    body.sort((a, b) => (first(a) < first(b) ? -1 : first(a) > first(b) ? 1 : 0));
+    const g0 = body[0]!;
+    const fps = body.map((g) => g.fp);
+    const service = g0.stmts[0]?.service ?? 'unknown';
+    const parent = g0.parent?.name ?? '(root)';
+    const key = createHash('sha256')
+      .update(`${service}\0${parent}\0${[...fps].sort().join('\0')}`)
+      .digest('hex')
+      .slice(0, 16);
+    let total = 0;
+    let saved = 0;
+    for (const g of body) {
+      const durations = g.stmts.map(durationMs);
+      const t = durations.reduce((a, b) => a + b, 0);
+      total += t;
+      saved += t - Math.max(...durations);
+    }
+    const chain = body.flatMap((g) => g.chain);
+    const orm = ormOf(chain);
+    // A write in the loop body is what needs batching; otherwise it's a read.
+    const kind = fps.map(kindOf).find((k) => k !== 'select') ?? kindOf(g0.fp);
+    const count = g0.stmts.length;
     const f =
       findings.get(key) ??
       ({
         key,
         service,
         parent,
-        fingerprint: g.fp,
+        fingerprint: g0.fp,
+        statements: fps,
         kind,
         orm,
-        location: locationOf(g.chain),
+        location: locationOf(chain),
         occurrences: [],
         maxCount: 0,
         totalMs: 0,
         estimatedSavedMs: 0,
         examples: [],
-        suggestion: suggest(kind, orm, g.fp),
+        suggestion: suggest(kind, orm, fps.find((fp) => kindOf(fp) === kind) ?? g0.fp),
       } satisfies Finding);
-    f.occurrences.push({
-      traceId: g.trace,
-      parentSpanId: g.parent?.spanId ?? '',
-      count: g.stmts.length,
-      totalMs: total,
-    });
-    f.maxCount = Math.max(f.maxCount, g.stmts.length);
+    f.occurrences.push({ traceId: g0.trace, parentSpanId: g0.parent?.spanId ?? '', count, totalMs: total });
+    f.maxCount = Math.max(f.maxCount, count);
     f.totalMs += total;
     f.estimatedSavedMs += saved;
-    for (const s of g.stmts) {
-      const sql = statementOf(s)!;
-      if (f.examples.length < 3 && !f.examples.includes(sql)) f.examples.push(sql);
-    }
+    for (const g of body)
+      for (const s of g.stmts) {
+        const sql = statementOf(s)!;
+        if (f.examples.length < 3 && !f.examples.includes(sql)) f.examples.push(sql);
+      }
     findings.set(key, f);
   }
   return [...findings.values()].sort((a, b) => b.estimatedSavedMs - a.estimatedSavedMs);

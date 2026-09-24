@@ -1,0 +1,47 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id       Int       @id @default(autoincrement())
+  name     String
+  posts    Post[]
+  comments Comment[]
+}
+
+model Post {
+  id        Int       @id @default(autoincrement())
+  title     String
+  authorId  Int
+  author    User      @relation(fields: [authorId], references: [id])
+  comments  Comment[]
+  tags      Tag[]
+  views     Int       @default(0)
+  createdAt DateTime  @default(now())
+}
+
+model Comment {
+  id       Int    @id @default(autoincrement())
+  body     String
+  postId   Int
+  post     Post   @relation(fields: [postId], references: [id])
+  authorId Int
+  author   User   @relation(fields: [authorId], references: [id])
+}
+
+model Tag {
+  id    Int    @id @default(autoincrement())
+  name  String @unique
+  posts Post[]
+}
+
+model AuditLog {
+  id    Int    @id @default(autoincrement())
+  event String
+  refId Int
+}

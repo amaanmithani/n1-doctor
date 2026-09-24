@@ -1,0 +1,30 @@
+name: n1-doctor
+description: Fail the build when OpenTelemetry traces from your tests contain new N+1 query patterns.
+branding: { icon: database, color: red }
+inputs:
+  traces:
+    description: Space-separated OTLP/JSON trace files (single document or JSON Lines).
+    required: true
+  baseline:
+    description: Baseline file of accepted findings; only findings not in it fail the build.
+    required: false
+    default: ''
+  threshold:
+    description: Repetitions of one statement under one parent span that count as N+1.
+    required: false
+    default: '5'
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      working-directory: ${{ github.action_path }}
+      run: npm ci --no-audit --no-fund --silent && npm run build --silent
+    - shell: bash
+      env:
+        TRACES: ${{ inputs.traces }}
+        BASELINE: ${{ inputs.baseline }}
+        THRESHOLD: ${{ inputs.threshold }}
+      run: |
+        args=(check $TRACES --threshold "$THRESHOLD" --format github)
+        if [ -n "$BASELINE" ]; then args+=(--baseline "$BASELINE"); fi
+        node "${{ github.action_path }}/dist/cli.js" "${args[@]}"
