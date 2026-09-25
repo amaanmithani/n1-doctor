@@ -1,5 +1,7 @@
 # n1-doctor
 
+> **Credits.** Built by Amaan Mithani with Claude (Anthropic) as the AI coding assistant.
+
 Finds N+1 queries in OpenTelemetry traces and fails CI when a new one appears.
 
 Run your test suite or a smoke test with tracing on, export the spans as OTLP/JSON, and point `n1doctor` at the file. It groups database statements by their SQL fingerprint and by the application span that issued them (seeing through ORM wrapper spans such as Prisma's), and reports any statement repeated at least `--threshold` times under one parent. Each finding carries a source location when the parent span has `code.*` attributes (the demo sets them at the top of each handler with a small helper; stock HTTP instrumentations don't), the ORM, the time a batched query would save, and a fix specific to the ORM and statement kind.
