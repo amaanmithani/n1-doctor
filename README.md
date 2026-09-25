@@ -22,6 +22,16 @@ NEW N+1 in blog-api › request handler - /tags/n1: insert repeated up to 8× (1
 
 <!-- sample:end -->
 
+## Screenshots
+
+![Terminal output of n1doctor check on the committed demo trace, listing seven N+1 findings and exiting 1](docs/img/check.svg)
+
+`node dist/cli.js check examples/demo-trace.json`, run locally on the demo trace committed in `examples/` (recorded from the Prisma demo app in `demo/`).
+
+![Terminal output of the same check with --format github, one ::error annotation per finding](docs/img/check-github.svg)
+
+The same trace with `--format github`: the workflow-command lines GitHub turns into PR annotations.
+
 ## Usage
 
 ```sh
